@@ -42,63 +42,58 @@ class RecipesSpider(scrapy.Spider):
         if isinstance(preparation_time, str):
             preparation_time = preparation_time.strip()
 
-        ingredients = []
+        ingredients_sections = []
 
-        for ingredient in response.css("ul.c-ingredientes__list"):
-            ingredient_name = ingredient.css(
-                "li.c-ingredientes__ingrediente span:first-child::text"
+        for ingredient_list in response.css("ul.c-ingredientes__list"):
+            ingredients = []
+
+            ingredient_section_title = ingredient_list.css(
+                "li.c-ingredientes__list-title::text"
             ).get()
 
-            if ingredient_name is None:
+            for ingredient in ingredient_list.css("li.c-ingredientes__ingrediente"):
+                ingredient_name = (
+                    ingredient.css("span:first-child").xpath("string()").get()
+                )
+                ingredient_quantity = ingredient.css("span:last-child::text").get()
+                ingredients.append(
+                    {"name": ingredient_name, "quantity": ingredient_quantity}
+                )
+
+            ingredients_sections.append(
+                {"title": ingredient_section_title, "ingredients": ingredients}
+            )
+
+        preparation_sections = []
+
+        for i, preparation_element in enumerate(response.css("div.c-preparacion > *")):
+            previous_element = None
+            step_title = None
+            steps = []
+
+            if i > 0:
+                previous_element = response.css("div.c-preparacion > *")[i - 1]
+
+            if preparation_element.root.tag == "ul":
+                for step_item in preparation_element.css("li"):
+                    step = step_item.xpath("string()").get().strip()
+                    steps.append(step)
+            else:
                 continue
 
-            ingredient_name = ingredient_name.strip()
+            if previous_element is not None and previous_element.root.tag == "p":
+                title_text = previous_element.xpath("string()").get()
+                step_title = title_text.strip()
 
-            quantity = ingredient.css(
-                "li.c-ingredientes__ingrediente span:last-child::text"
-            ).get()
+            if step_title is None and not steps:
+                continue
 
-            if isinstance(quantity, str):
-                quantity = quantity.strip()
-
-            ingredients.append(
-                {
-                    "name": ingredient_name,
-                    "quantity": quantity,
-                }
-            )
-
-        main_preparation = []
-
-        for list_item in response.css("div.c-preparacion ul:first-of-type li::text"):
-            step = list_item.get()
-            main_preparation.append(step)
-
-        extra_preparations_titles = response.css(
-            "div.c-preparacion p strong::text"
-        ).getall()
-
-        extra_preparations = []
-
-        for i, extra_preparation_list in enumerate(
-            response.css("div.c-preparacion ul:first-of-type ~ ul")
-        ):
-            extra_preparation = []
-            for preparation_item in extra_preparation_list.css("li::text"):
-                step = preparation_item.get()
-                extra_preparation.append(step)
-            extra_preparations.append(
-                {
-                    "title": extra_preparations_titles[i],
-                    "preparation": extra_preparation,
-                }
-            )
+            preparation_sections.append({"title": step_title, "steps": steps})
 
         yield {
             "name": name,
             "image": image,
             "preparation_time": preparation_time,
-            "ingredients": ingredients,
-            "main_preparation": main_preparation,
-            "extra_preparations": extra_preparations,
+            "ingredients_sections": ingredients_sections,
+            "preparation_sections": preparation_sections,
         }
