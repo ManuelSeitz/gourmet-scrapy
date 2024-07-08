@@ -51,11 +51,22 @@ class RecipesSpider(scrapy.Spider):
                 "li.c-ingredientes__list-title::text"
             ).get()
 
+            if isinstance(ingredient_section_title, str):
+                ingredient_section_title = ingredient_section_title.strip()
+
             for ingredient in ingredient_list.css("li.c-ingredientes__ingrediente"):
                 ingredient_name = (
                     ingredient.css("span:first-child").xpath("string()").get()
                 )
+
+                if isinstance(ingredient_name, str):
+                    ingredient_name = ingredient_name.strip()
+
                 ingredient_quantity = ingredient.css("span:last-child::text").get()
+
+                if isinstance(ingredient_quantity, str):
+                    ingredient_quantity = ingredient_quantity.strip()
+
                 ingredients.append(
                     {"name": ingredient_name, "quantity": ingredient_quantity}
                 )
