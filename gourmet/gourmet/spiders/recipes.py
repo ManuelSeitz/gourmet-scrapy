@@ -88,16 +88,15 @@ class RecipesSpider(scrapy.Spider):
             if preparation_element.root.tag == "ul":
                 for step_item in preparation_element.css("li"):
                     if step_item.css("::attr(class)").get() == "tit":
+                        step_title = step_item.xpath("string()").get().strip()
                         continue
+
                     step = step_item.xpath("string()").get().strip()
                     steps.append(step)
             else:
                 continue
 
-            if previous_element is not None and (
-                previous_element.root.tag == "p"
-                or previous_element.css("li::attr(class)").get() == "tit"
-            ):
+            if previous_element is not None and previous_element.root.tag == "p":
                 title_text = previous_element.xpath("string()").get()
                 step_title = title_text.strip()
 
