@@ -1,3 +1,4 @@
+from re import sub
 import scrapy
 
 
@@ -65,7 +66,8 @@ class ElGourmetSpider(scrapy.Spider):
                 ingredient_quantity = ingredient.css("span:last-child::text").get()
 
                 if isinstance(ingredient_quantity, str):
-                    ingredient_quantity = ingredient_quantity.strip()
+                    strip_ingredient_quantity = ingredient_quantity.strip()
+                    ingredient_quantity = sub(r"\s{2,}", " ", strip_ingredient_quantity)
 
                 ingredients.append(
                     {"name": ingredient_name, "quantity": ingredient_quantity}
