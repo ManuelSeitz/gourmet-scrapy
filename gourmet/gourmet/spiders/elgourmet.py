@@ -6,7 +6,7 @@ class ElGourmetSpider(scrapy.Spider):
     name = "elgourmet"
     allowed_domains = ["elgourmet.com"]
     start_urls = ["https://elgourmet.com/recetas"]
-    page = 2
+    page = 1
     last_page = None
 
     def parse(self, response):
@@ -41,7 +41,10 @@ class ElGourmetSpider(scrapy.Spider):
         ).get()
 
         if isinstance(preparation_time, str):
-            preparation_time = preparation_time.strip()
+            try:
+                preparation_time = int(preparation_time.strip().split(" ")[0])
+            except ValueError:
+                preparation_time = None
 
         ingredients_sections = []
 
