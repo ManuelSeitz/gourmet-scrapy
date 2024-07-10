@@ -46,17 +46,22 @@ class ElGourmetSpider(scrapy.Spider):
             except ValueError:
                 preparation_time = None
 
-        ingredients_sections = []
+        ingredient_sections = []
+        ingredients = []
+        quantities = []
+        ingredients_per_sections = []
 
         for ingredient_list in response.css("ul.c-ingredientes__list"):
-            ingredients = []
+            section_ingredients = []
 
-            ingredient_section_title = ingredient_list.css(
+            section_title = ingredient_list.css(
                 "li.c-ingredientes__list-title::text"
             ).get()
 
-            if isinstance(ingredient_section_title, str):
-                ingredient_section_title = ingredient_section_title.strip()
+            if isinstance(section_title, str):
+                section_title = section_title.strip()
+            else:
+                section_title = ""
 
             for ingredient in ingredient_list.css("li.c-ingredientes__ingrediente"):
                 ingredient_name = (
@@ -71,21 +76,24 @@ class ElGourmetSpider(scrapy.Spider):
                 if isinstance(ingredient_quantity, str):
                     strip_ingredient_quantity = ingredient_quantity.strip()
                     ingredient_quantity = sub(r"\s{2,}", " ", strip_ingredient_quantity)
+                else:
+                    ingredient_quantity = ""
 
-                ingredients.append(
-                    {"name": ingredient_name, "quantity": ingredient_quantity}
-                )
+                section_ingredients.append(ingredient_name)
+                quantities.append(ingredient_quantity)
 
-            ingredients_sections.append(
-                {"title": ingredient_section_title, "ingredients": ingredients}
-            )
+            ingredient_sections.append(section_title)
+            ingredients.extend(section_ingredients)
+            ingredients_per_sections.append(len(section_ingredients))
 
         preparation_sections = []
+        steps = []
+        steps_per_sections = []
 
         for i, preparation_element in enumerate(response.css("div.c-preparacion > *")):
             previous_element = None
-            step_title = None
-            steps = []
+            section_title = ""
+            section_steps = []
 
             if i > 0:
                 previous_element = response.css("div.c-preparacion > *")[i - 1]
@@ -93,27 +101,37 @@ class ElGourmetSpider(scrapy.Spider):
             if preparation_element.root.tag == "ul":
                 for step_item in preparation_element.css("li"):
                     if step_item.css("::attr(class)").get() == "tit":
-                        step_title = step_item.xpath("string()").get().strip()
+                        section_title = step_item.xpath("string()").get().strip()
                         continue
 
                     step = step_item.xpath("string()").get().strip()
-                    steps.append(step)
+                    section_steps.append(step)
             else:
                 continue
 
             if previous_element is not None and previous_element.root.tag == "p":
                 title_text = previous_element.xpath("string()").get()
-                step_title = title_text.strip()
+                section_title = title_text.strip()
 
-            if step_title is None and not steps:
+            if not section_title and not section_steps:
                 continue
 
-            preparation_sections.append({"title": step_title, "steps": steps})
+            preparation_sections.append(section_title)
+            steps.extend(section_steps)
+            steps_per_sections.append(len(section_steps))
 
         yield {
             "name": name,
             "image": image,
             "preparation_time": preparation_time,
-            "ingredients_sections": ingredients_sections,
+            "ingredient_sections": ingredient_sections,
+            "ingredients": ingredients,
+            "quantities": quantities,
+            "total_ingredients": len(ingredients),
+            "ingredients_per_sections": ingredients_per_sections,
             "preparation_sections": preparation_sections,
+            "steps": steps,
+            "total_steps": len(steps),
+            "steps_per_sections": steps_per_sections,
+            "url": response.url,
         }
